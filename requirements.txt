@@ -1,0 +1,33 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Travel Planner Agent – Python Dependencies
+# IBM Cloud Lite / IBM Granite Integration
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Web framework
+flask>=3.0.0
+flask-cors>=4.0.0
+
+# IBM watsonx.ai SDK (includes IBM Granite access)
+ibm-watsonx-ai>=0.2.6
+
+# IBM Watson services (Lite tier)
+ibm-watson>=7.0.1
+ibm-cloud-sdk-core>=3.18.0
+
+# IBM Cloud Object Storage (optional, for session persistence)
+ibm-cos-sdk>=2.13.2
+
+# Environment & configuration
+python-dotenv>=1.0.0
+
+# HTTP client
+requests>=2.31.0
+
+# Data handling
+pydantic>=2.5.0
+
+# Production WSGI server
+gunicorn>=21.2.0
+
+# Utilities
+python-dateutil>=2.8.2

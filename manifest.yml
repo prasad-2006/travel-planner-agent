@@ -1,0 +1,10 @@
+{
+  "name": "travel-planner-agent",
+  "memory": "256M",
+  "instances": 1,
+  "buildpack": "python_buildpack",
+  "command": "gunicorn wsgi:application --workers 2 --bind 0.0.0.0:$PORT --timeout 120",
+  "env": {
+    "FLASK_ENV": "production"
+  }
+}

@@ -1,0 +1,42 @@
+﻿# ─────────────────────────────────────────────────────────────────────────────
+# NEVER commit these — they contain real API keys and secrets
+# ─────────────────────────────────────────────────────────────────────────────
+.env
+.env.local
+.env.production
+*.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv/
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Logs
+*.log
+logs/
+
+# Test / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Temp files
+*.tmp
+_test_*.py

@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Trip Planner — IBM Granite</title>
+  <link rel="stylesheet" href="/static/css/style.css"/>
+  <style>
+    /* ── Hero ─────────────────────────────────── */
+    .planner-hero {
+      background: linear-gradient(135deg,#080f22 0%,#0f1e3d 55%,#1a1040 100%);
+      padding:3rem 2rem 2.5rem; text-align:center; position:relative; overflow:hidden;
+      border-bottom:1px solid rgba(255,255,255,.07);
+    }
+    .planner-hero-grid {
+      position:absolute;inset:0;pointer-events:none;
+      background-image:linear-gradient(rgba(15,98,254,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(15,98,254,.06) 1px,transparent 1px);
+      background-size:40px 40px;
+    }
+    .planner-hero h1{font-size:2.1rem;font-weight:800;color:#fff;letter-spacing:-.4px;margin-bottom:.5rem;}
+    .planner-hero h1 span{background:linear-gradient(135deg,#74b9ff,#a29bfe);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+    .planner-hero p{color:rgba(255,255,255,.6);font-size:.95rem;}
+
+    /* ── Form layout ──────────────────────────── */
+    .planner-layout{max-width:980px;margin:0 auto;padding:2rem 1.5rem 4rem;display:grid;gap:1.5rem;}
+    .form-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow-sm);}
+    .form-section-header{padding:.9rem 1.4rem;border-bottom:1px solid var(--border);background:var(--surface2);display:flex;align-items:center;gap:.6rem;}
+    .form-section-header h3{font-size:.88rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;}
+    .form-section-body{padding:1.35rem 1.4rem;}
+    .interests-grid{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.4rem;}
+    .interest-chip input{display:none;}
+    .interest-chip label{display:inline-flex;align-items:center;gap:.3rem;padding:.35rem .85rem;border-radius:20px;cursor:pointer;font-size:.83rem;font-weight:500;border:1.5px solid var(--border);color:var(--muted);background:var(--surface);transition:all .15s;user-select:none;}
+    .interest-chip label:hover{border-color:var(--accent);color:var(--accent);}
+    .interest-chip input:checked+label{background:var(--accent);color:#fff;border-color:var(--accent);box-shadow:0 2px 8px rgba(15,98,254,.3);}
+
+    /* ── Submit bar ───────────────────────────── */
+    .submit-area{background:linear-gradient(135deg,#080f22,#0f1e3d 60%,#1a1040);border:1px solid rgba(255,255,255,.08);border-radius:var(--radius);padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;}
+    .submit-area-text h3{color:#fff;font-size:1rem;font-weight:700;margin-bottom:.25rem;}
+    .submit-area-text p{color:rgba(255,255,255,.55);font-size:.84rem;}
+    #plan-btn{padding:.85rem 2.5rem;font-size:1rem;border-radius:10px;white-space:nowrap;min-width:220px;background:linear-gradient(135deg,#0f62fe,#6929c4);box-shadow:0 4px 18px rgba(15,98,254,.4);flex-shrink:0;}
+    #plan-btn:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(15,98,254,.5);}
+
+    /* ── Loading ──────────────────────────────── */
+    .loading-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:3.5rem 2rem;text-align:center;box-shadow:var(--shadow-sm);display:none;}
+    .loading-card.visible{display:block;}
+    .loading-steps{display:flex;justify-content:center;gap:1.5rem;margin-top:1.5rem;flex-wrap:wrap;}
+    .loading-step{display:flex;align-items:center;gap:.4rem;font-size:.8rem;color:var(--muted);}
+    .step-dot{width:8px;height:8px;border-radius:50%;background:var(--border);}
+    .step-dot.active{background:var(--accent);animation:blink 1s infinite;}
+    @keyframes blink{0%,100%{opacity:1;}50%{opacity:.3;}}
+
+    /* ── Dashboard output ─────────────────────── */
+    .plan-dashboard{display:none;max-width:980px;margin:0 auto 4rem;}
+    .plan-dashboard.visible{display:block;}
+
+    /* Dashboard header */
+    .dash-header{background:linear-gradient(135deg,#080f22 0%,#0f62fe 80%,#6929c4 100%);color:#fff;border-radius:var(--radius) var(--radius) 0 0;padding:1.75rem 2rem;display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;}
+    .dash-header h2{font-size:1.4rem;font-weight:800;margin-bottom:.35rem;}
+    .dash-header .sub{font-size:.84rem;opacity:.7;}
+
+    /* Weather strip */
+    .dash-weather{display:flex;align-items:center;gap:1rem;padding:.75rem 2rem;background:linear-gradient(90deg,#e8f4fd,#f0f4ff);border:1px solid var(--border);border-top:none;font-size:.88rem;color:#0c4a6e;flex-wrap:wrap;}
+    .weather-pill{background:#fff;border:1px solid #bee5eb;padding:.25rem .7rem;border-radius:12px;font-size:.82rem;}
+
+    /* Pill row */
+    .dash-pills{display:flex;gap:.5rem;flex-wrap:wrap;padding:.85rem 2rem;background:var(--surface2);border:1px solid var(--border);border-top:none;}
+    .dash-pill{background:#fff;border:1px solid var(--border);padding:.25rem .8rem;border-radius:20px;font-size:.79rem;color:var(--muted);}
+    .dash-pill strong{color:var(--text);}
+
+    /* Section label */
+    .dash-section{margin-top:1.5rem;}
+    .dash-section-title{display:flex;align-items:center;gap:.6rem;font-size:.82rem;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--accent);margin-bottom:.85rem;padding-bottom:.4rem;border-bottom:2px solid var(--border);}
+
+    /* ── Flight cards ─────────────────────────── */
+    .flights-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem;}
+    .flight-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;box-shadow:var(--shadow-sm);transition:transform .15s,box-shadow .15s;position:relative;overflow:hidden;}
+    .flight-card::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#0f62fe,#6929c4);}
+    .flight-card:hover{transform:translateY(-2px);box-shadow:var(--shadow);}
+    .flight-airline{font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--accent);margin-bottom:.6rem;}
+    .flight-route{font-size:1rem;font-weight:700;color:var(--text);margin-bottom:.5rem;display:flex;align-items:center;gap:.5rem;}
+    .flight-arrow{color:var(--accent);font-size:.9rem;}
+    .flight-meta{display:flex;gap:.75rem;font-size:.82rem;color:var(--muted);margin-bottom:.75rem;flex-wrap:wrap;}
+    .flight-price{font-size:1.35rem;font-weight:800;color:var(--accent);}
+    .flight-price span{font-size:.8rem;font-weight:500;color:var(--muted);}
+    .flight-stops{display:inline-flex;align-items:center;gap:.3rem;background:rgba(15,98,254,.08);color:var(--accent);padding:3px 9px;border-radius:20px;font-size:.75rem;font-weight:600;}
+
+    /* ── Hotel cards ──────────────────────────── */
+    .hotels-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem;}
+    .hotel-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;box-shadow:var(--shadow-sm);transition:transform .15s,box-shadow .15s;position:relative;}
+    .hotel-card:hover{transform:translateY(-2px);box-shadow:var(--shadow);}
+    .hotel-type-badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:.6rem;}
+    .type-budget{background:#d4edda;color:#155724;}
+    .type-mid{background:#fff8e1;color:#5a4000;}
+    .type-best{background:linear-gradient(135deg,rgba(15,98,254,.1),rgba(105,41,196,.1));color:var(--accent);}
+    .hotel-name{font-size:.97rem;font-weight:700;margin-bottom:.3rem;}
+    .hotel-neighbourhood{font-size:.82rem;color:var(--muted);margin-bottom:.6rem;}
+    .hotel-stars{color:#f4b942;font-size:.85rem;margin-bottom:.5rem;}
+    .hotel-highlight{font-size:.82rem;color:var(--muted);background:var(--surface2);border-radius:8px;padding:.4rem .7rem;margin-bottom:.75rem;}
+    .hotel-price{font-size:1.25rem;font-weight:800;color:var(--accent);}
+    .hotel-price span{font-size:.78rem;font-weight:500;color:var(--muted);}
+
+    /* ── Day timeline ─────────────────────────── */
+    .timeline{position:relative;padding-left:2.5rem;}
+    .timeline::before{content:"";position:absolute;left:.85rem;top:.5rem;bottom:.5rem;width:2px;background:linear-gradient(to bottom,var(--accent),var(--accent2));border-radius:1px;}
+    .timeline-day{position:relative;margin-bottom:1.25rem;}
+    .timeline-dot{position:absolute;left:-1.75rem;top:.6rem;width:14px;height:14px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));border:2px solid #fff;box-shadow:0 0 0 2px var(--accent);}
+    .timeline-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow-sm);transition:box-shadow .15s;}
+    .timeline-card:hover{box-shadow:var(--shadow);}
+    .timeline-day-header{padding:.75rem 1.1rem;background:linear-gradient(135deg,var(--surface2),#f0f4ff);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;}
+    .timeline-day-num{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--accent);}
+    .timeline-day-title{font-size:.93rem;font-weight:700;color:var(--text);}
+    .timeline-day-date{font-size:.78rem;color:var(--muted);}
+    .timeline-day-cost{font-size:.82rem;font-weight:600;color:var(--success);background:#d4edda;padding:2px 9px;border-radius:12px;}
+    .timeline-slots{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border-top:1px solid var(--border);}
+    .timeline-slot{padding:.85rem 1rem;border-right:1px solid var(--border);}
+    .timeline-slot:last-child{border-right:none;}
+    .slot-label{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:.35rem;}
+    .slot-morning .slot-label{color:#f4b942;}
+    .slot-afternoon .slot-label{color:#0f62fe;}
+    .slot-evening .slot-label{color:#6929c4;}
+    .slot-text{font-size:.83rem;color:var(--text);line-height:1.5;}
+    @media(max-width:600px){.timeline-slots{grid-template-columns:1fr;}.timeline-slot{border-right:none;border-bottom:1px solid var(--border);}.timeline-slot:last-child{border-bottom:none;}}
+
+    /* ── Budget chart ─────────────────────────── */
+    .budget-section{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;align-items:start;}
+    @media(max-width:680px){.budget-section{grid-template-columns:1fr;}}
+    .budget-chart-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.35rem;box-shadow:var(--shadow-sm);}
+    .budget-chart-title{font-size:.82rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:1rem;}
+    .budget-bars{display:flex;flex-direction:column;gap:.65rem;}
+    .budget-bar-row{display:grid;grid-template-columns:100px 1fr 60px;align-items:center;gap:.6rem;}
+    .budget-bar-label{font-size:.8rem;color:var(--text);font-weight:500;}
+    .budget-bar-track{height:8px;background:var(--surface3);border-radius:4px;overflow:hidden;}
+    .budget-bar-fill{height:100%;border-radius:4px;transition:width 1s ease;}
+    .budget-bar-val{font-size:.8rem;font-weight:600;color:var(--text);text-align:right;}
+    .budget-summary{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.35rem;box-shadow:var(--shadow-sm);}
+    .budget-total-row{display:flex;justify-content:space-between;align-items:center;padding:.5rem 0;border-bottom:1px solid var(--border);font-size:.9rem;}
+    .budget-total-row:last-child{border-bottom:none;font-weight:700;font-size:1rem;padding-top:.75rem;}
+    .budget-surplus{color:var(--success);font-weight:700;}
+    .budget-deficit{color:var(--danger);font-weight:700;}
+
+    /* ── Tips grid ────────────────────────────── */
+    .tips-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:.85rem;}
+    .tip-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.1rem;box-shadow:var(--shadow-sm);transition:transform .15s,box-shadow .15s;}
+    .tip-card:hover{transform:translateY(-2px);box-shadow:var(--shadow);}
+    .tip-icon{font-size:1.5rem;margin-bottom:.5rem;}
+    .tip-title{font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--accent);margin-bottom:.3rem;}
+    .tip-text{font-size:.84rem;color:var(--muted);line-height:1.55;}
+
+    /* ── Currency bar ─────────────────────────── */
+    .dash-currency{display:flex;gap:.55rem;flex-wrap:wrap;align-items:center;padding:.85rem 0;margin-top:.5rem;}
+    .currency-tag{background:#fff;border:1px solid var(--border);padding:.28rem .75rem;border-radius:8px;font-size:.81rem;}
+    .currency-tag strong{color:var(--accent);}
+  </style>
+</head>
+<body>
+
+<nav class="navbar">
+  <a class="navbar-brand" href="/"><span class="brand-icon">✈️</span>TravelAI<span class="ibm-badge">IBM Granite</span></a>
+  <div class="nav-links">
+    <a href="/">Home</a><a href="/planner" class="active">Planner</a><a href="/chat">AI Chat</a>
+  </div>
+</nav>
+
+<!-- Hero -->
+<div class="planner-hero">
+  <div class="planner-hero-grid"></div>
+  <div style="position:relative;">
+    <div class="hero-eyebrow" style="margin-bottom:1rem;">⚡ IBM Granite 4 · Complete Trip Planning</div>
+    <h1 class="planner-hero" style="background:none;border:none;padding:0;">Plan Your <span style="background:linear-gradient(135deg,#74b9ff,#a29bfe);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Perfect Trip</span></h1>
+    <p style="color:rgba(255,255,255,.6);font-size:.95rem;margin-top:.5rem;">Fill in the details — IBM Granite generates a full visual trip plan with flights, hotels, itinerary &amp; budget.</p>
+  </div>
+</div>
+
+<!-- Form -->
+<form id="trip-form">
+<div class="planner-layout">
+
+  <!-- Where & When -->
+  <div class="form-section">
+    <div class="form-section-header"><span>📍</span><h3>Where &amp; When</h3></div>
+    <div class="form-section-body">
+      <div class="form-row">
+        <div class="form-group"><label>Destination *</label><input name="destination" class="form-control" placeholder="e.g. Paris, France" required/></div>
+        <div class="form-group"><label>Departing From *</label><input name="origin" class="form-control" placeholder="e.g. New York, USA" required/></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Departure Date *</label><input name="start_date" type="date" class="form-control" required/></div>
+        <div class="form-group"><label>Duration (nights) *</label><input name="duration" type="number" class="form-control" value="7" min="1" max="30" required/></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Budget -->
+  <div class="form-section">
+    <div class="form-section-header"><span>💰</span><h3>Travellers &amp; Budget</h3></div>
+    <div class="form-section-body">
+      <div class="form-row">
+        <div class="form-group"><label>Travellers</label><input name="travellers" type="number" class="form-control" value="1" min="1" max="20"/></div>
+        <div class="form-group"><label>Currency</label>
+          <select name="currency" class="form-control">
+            <option value="USD">USD – US Dollar</option><option value="EUR">EUR – Euro</option><option value="GBP">GBP – British Pound</option>
+            <option value="AUD">AUD – Australian Dollar</option><option value="CAD">CAD – Canadian Dollar</option>
+            <option value="JPY">JPY – Japanese Yen</option><option value="INR">INR – Indian Rupee</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Total Trip Budget</label><input name="total_budget" type="number" class="form-control" value="3000" min="0"/></div>
+        <div class="form-group"><label>Hotel Budget / night</label><input name="hotel_budget" type="number" class="form-control" value="100" min="0"/></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Daily Spending (food + activities)</label><input name="daily_budget" type="number" class="form-control" value="80" min="0"/></div>
+        <div class="form-group"><label>Travel Style</label>
+          <select name="travel_style" class="form-control">
+            <option value="budget">Budget</option><option value="balanced" selected>Balanced</option><option value="luxury">Luxury</option>
+            <option value="adventure">Adventure</option><option value="cultural">Cultural</option>
+            <option value="family">Family</option><option value="romantic">Romantic</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Interests -->
+  <div class="form-section">
+    <div class="form-section-header"><span>🎯</span><h3>Interests</h3></div>
+    <div class="form-section-body">
+      <div class="interests-grid">
+        <span class="interest-chip"><input type="checkbox" id="i1" name="interest" value="culture" checked><label for="i1">🏛️ Culture</label></span>
+        <span class="interest-chip"><input type="checkbox" id="i2" name="interest" value="food" checked><label for="i2">🍽️ Food</label></span>
+        <span class="interest-chip"><input type="checkbox" id="i3" name="interest" value="nature"><label for="i3">🌿 Nature</label></span>
+        <span class="interest-chip"><input type="checkbox" id="i4" name="interest" value="adventure"><label for="i4">🧗 Adventure</label></span>
+        <span class="interest-chip"><input type="checkbox" id="i5" name="interest" value="beaches"><label for="i5">🏖️ Beaches</label></span>
+        <span class="interest-chip"><input type="checkbox" id="i6" name="interest" value="history"><label for="i6">📜 History</label></span>
+        <span class="interest-chip"><input type="checkbox" id="i7" name="interest" value="nightlife"><label for="i7">🌙 Nightlife</label></span>
+        <span class="interest-chip"><input type="checkbox" id="i8" name="interest" value="shopping"><label for="i8">🛍️ Shopping</label></span>
+        <span class="interest-chip"><input type="checkbox" id="i9" name="interest" value="wellness"><label for="i9">🧘 Wellness</label></span>
+        <span class="interest-chip"><input type="checkbox" id="i10" name="interest" value="art"><label for="i10">🎨 Art</label></span>
+        <span class="interest-chip"><input type="checkbox" id="i11" name="interest" value="sports"><label for="i11">⚽ Sports</label></span>
+        <span class="interest-chip"><input type="checkbox" id="i12" name="interest" value="photography"><label for="i12">📷 Photography</label></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Preferences -->
+  <div class="form-section">
+    <div class="form-section-header"><span>⚙️</span><h3>Preferences</h3></div>
+    <div class="form-section-body">
+      <div class="form-row">
+        <div class="form-group"><label>Dietary Requirements</label><input name="dietary" class="form-control" placeholder="e.g. Vegetarian, Halal, None"/></div>
+        <div class="form-group"><label>Accommodation Type</label>
+          <select name="accommodation_pref" class="form-control">
+            <option value="hotel">Hotel</option><option value="boutique">Boutique Hotel</option>
+            <option value="airbnb">Apartment / Airbnb</option><option value="hostel">Hostel</option>
+            <option value="resort">Resort</option><option value="any" selected>No Preference</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group"><label>Special Requests / Notes</label><input name="special_requests" class="form-control" placeholder="e.g. Anniversary, travelling with kids, wheelchair accessible…"/></div>
+    </div>
+  </div>
+
+  <!-- Submit -->
+  <div class="submit-area">
+    <div class="submit-area-text">
+      <h3>Ready to generate your visual trip plan?</h3>
+      <p>IBM Granite builds flights, hotels, day timeline &amp; budget chart — all interactive.</p>
+    </div>
+    <button type="submit" class="btn btn-primary" id="plan-btn">🚀 Generate My Trip Plan</button>
+  </div>
+
+  <!-- Loading -->
+  <div class="loading-card" id="loading-card">
+    <div class="big-spinner"></div>
+    <h3 style="font-size:1.05rem;font-weight:700;margin-bottom:.4rem;">IBM Granite is crafting your trip…</h3>
+    <p style="font-size:.88rem;color:var(--muted);">Generating flights, hotels, itinerary &amp; budget visualisations</p>
+    <div class="loading-steps">
+      <div class="loading-step"><div class="step-dot active"></div>✈️ Flights</div>
+      <div class="loading-step"><div class="step-dot active"></div>🏨 Hotels</div>
+      <div class="loading-step"><div class="step-dot active"></div>📅 Itinerary</div>
+      <div class="loading-step"><div class="step-dot active"></div>💰 Budget Chart</div>
+      <div class="loading-step"><div class="step-dot active"></div>🌍 Tips</div>
+    </div>
+  </div>
+
+</div>
+</form>
+
+<!-- ── Visual Dashboard Output ─────────────────────────────────────────────── -->
+<div class="plan-dashboard" id="plan-dashboard">
+  <div class="planner-layout" style="padding-top:0;">
+
+    <!-- Header -->
+    <div>
+      <div class="dash-header">
+        <div>
+          <h2 id="dash-title">Your Complete Trip</h2>
+          <div class="sub" id="dash-subtitle"></div>
+        </div>
+        <span class="granite-badge">⚡ IBM Granite 4</span>
+      </div>
+      <div class="dash-weather" id="dash-weather" style="display:none;">
+        <span>🌤️</span><span id="dash-weather-text"></span>
+      </div>
+      <div class="dash-pills" id="dash-pills"></div>
+    </div>
+
+    <!-- Flights -->
+    <div class="dash-section" id="sec-flights" style="display:none;">
+      <div class="dash-section-title">✈️ Flights &amp; Getting There</div>
+      <div class="flights-grid" id="flights-grid"></div>
+    </div>
+
+    <!-- Hotels -->
+    <div class="dash-section" id="sec-hotels" style="display:none;">
+      <div class="dash-section-title">🏨 Accommodation Options</div>
+      <div class="hotels-grid" id="hotels-grid"></div>
+    </div>
+
+    <!-- Itinerary timeline -->
+    <div class="dash-section" id="sec-itinerary" style="display:none;">
+      <div class="dash-section-title">📅 Day-by-Day Itinerary</div>
+      <div class="timeline" id="timeline"></div>
+    </div>
+
+    <!-- Budget chart -->
+    <div class="dash-section" id="sec-budget" style="display:none;">
+      <div class="dash-section-title">💰 Budget Breakdown</div>
+      <div class="budget-section">
+        <div class="budget-chart-wrap">
+          <div class="budget-chart-title">Spending by Category</div>
+          <div class="budget-bars" id="budget-bars"></div>
+        </div>
+        <div class="budget-summary" id="budget-summary"></div>
+      </div>
+    </div>
+
+    <!-- Tips -->
+    <div class="dash-section" id="sec-tips" style="display:none;">
+      <div class="dash-section-title">🌍 Practical Travel Tips</div>
+      <div class="tips-grid" id="tips-grid"></div>
+    </div>
+
+    <!-- Currency conversions -->
+    <div class="dash-section" id="sec-currency" style="display:none;">
+      <div class="dash-section-title">💱 Budget in Other Currencies</div>
+      <div class="dash-currency" id="dash-currency"></div>
+    </div>
+
+  </div>
+</div>
+
+<footer class="footer"><p>TravelAI Agent — IBM Granite 4 on IBM Cloud Lite</p></footer>
+
+<script src="/static/js/app.js"></script>
+<script>
+// ── Bar colours ───────────────────────────────────────────────────────────────
+const BAR_COLORS = {
+  flights:'#0f62fe', accommodation:'#6929c4', food:'#24a148',
+  activities:'#f4b942', transport:'#da1e28', shopping:'#00b5d8', emergency:'#8e8e8e'
+};
+
+// ── Stars renderer ────────────────────────────────────────────────────────────
+function stars(r){ const f=Math.round(r); return '★'.repeat(f)+'☆'.repeat(5-f)+` <span style="color:var(--muted);font-size:.78rem;">${r}</span>`; }
+
+// ── Render flights ────────────────────────────────────────────────────────────
+function renderFlights(flights, currency) {
+  const g = document.getElementById('flights-grid');
+  if (!flights || !flights.length) return;
+  g.innerHTML = flights.map((f,i) => `
+    <div class="flight-card">
+      <div class="flight-airline">✈️ ${f.airline}</div>
+      <div class="flight-route">${f.route.replace(' to ','<span class="flight-arrow"> → </span>')}</div>
+      <div class="flight-meta">
+        <span>🕐 ${f.duration}</span>
+        <span class="flight-stops">${f.stops}</span>
+      </div>
+      <div class="flight-price">${currency} ${(f.price||0).toLocaleString()} <span>/ person</span></div>
+    </div>`).join('');
+  document.getElementById('sec-flights').style.display = 'block';
+}
+
+// ── Render hotels ─────────────────────────────────────────────────────────────
+function renderHotels(hotels, currency) {
+  const g = document.getElementById('hotels-grid');
+  if (!hotels || !hotels.length) return;
+  const typeClass = {Budget:'type-budget','Mid-range':'type-mid','Best Value':'type-best'};
+  g.innerHTML = hotels.map(h => `
+    <div class="hotel-card">
+      <span class="hotel-type-badge ${typeClass[h.type]||'type-mid'}">${h.type}</span>
+      <div class="hotel-name">${h.name}</div>
+      <div class="hotel-neighbourhood">📍 ${h.neighbourhood}</div>
+      <div class="hotel-stars">${stars(h.rating||4)}</div>
+      <div class="hotel-highlight">💡 ${h.highlight}</div>
+      <div class="hotel-price">${currency} ${(h.price_per_night||0).toLocaleString()} <span>/ night</span></div>
+    </div>`).join('');
+  document.getElementById('sec-hotels').style.display = 'block';
+}
+
+// ── Render itinerary timeline ─────────────────────────────────────────────────
+function renderItinerary(itinerary, currency) {
+  const t = document.getElementById('timeline');
+  if (!itinerary || !itinerary.length) return;
+  t.innerHTML = itinerary.map(day => `
+    <div class="timeline-day">
+      <div class="timeline-dot"></div>
+      <div class="timeline-card">
+        <div class="timeline-day-header">
+          <div>
+            <div class="timeline-day-num">Day ${day.day}</div>
+            <div class="timeline-day-title">${day.title||'Exploration Day'}</div>
+          </div>
+          <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
+            <span class="timeline-day-date">${day.date||''}</span>
+            ${day.est_cost ? `<span class="timeline-day-cost">~${currency} ${day.est_cost}</span>` : ''}
+          </div>
+        </div>
+        <div class="timeline-slots">
+          <div class="timeline-slot slot-morning"><div class="slot-label">🌅 Morning</div><div class="slot-text">${day.morning||'—'}</div></div>
+          <div class="timeline-slot slot-afternoon"><div class="slot-label">☀️ Afternoon</div><div class="slot-text">${day.afternoon||'—'}</div></div>
+          <div class="timeline-slot slot-evening"><div class="slot-label">🌙 Evening</div><div class="slot-text">${day.evening||'—'}</div></div>
+        </div>
+      </div>
+    </div>`).join('');
+  document.getElementById('sec-itinerary').style.display = 'block';
+}
+
+// ── Render budget chart ───────────────────────────────────────────────────────
+function renderBudget(budget, currency) {
+  if (!budget) return;
+  const categories = ['flights','accommodation','food','activities','transport','shopping','emergency'];
+  const max = Math.max(...categories.map(k => budget[k]||0), 1);
+  const barsEl = document.getElementById('budget-bars');
+  barsEl.innerHTML = categories.map(k => {
+    const val = budget[k]||0;
+    const pct = Math.round((val/max)*100);
+    const color = BAR_COLORS[k]||'#0f62fe';
+    const label = k.charAt(0).toUpperCase()+k.slice(1);
+    return `<div class="budget-bar-row">
+      <div class="budget-bar-label">${label}</div>
+      <div class="budget-bar-track"><div class="budget-bar-fill" style="width:${pct}%;background:${color};"></div></div>
+      <div class="budget-bar-val">${currency} ${val.toLocaleString()}</div>
+    </div>`;
+  }).join('');
+
+  const avail   = budget.available||0;
+  const total   = budget.total||0;
+  const diff    = avail - total;
+  const summEl  = document.getElementById('budget-summary');
+  summEl.innerHTML = `
+    <div class="budget-chart-title">Summary</div>
+    ${categories.map(k => `<div class="budget-total-row"><span>${k.charAt(0).toUpperCase()+k.slice(1)}</span><span>${currency} ${(budget[k]||0).toLocaleString()}</span></div>`).join('')}
+    <div class="budget-total-row"><span>Total Estimated</span><span style="color:var(--accent)">${currency} ${total.toLocaleString()}</span></div>
+    <div class="budget-total-row"><span>Your Budget</span><span>${currency} ${avail.toLocaleString()}</span></div>
+    <div class="budget-total-row"><span>${diff>=0?'💚 Surplus':'🔴 Over Budget'}</span><span class="${diff>=0?'budget-surplus':'budget-deficit'}">${diff>=0?'+':''}${currency} ${Math.abs(diff).toLocaleString()}</span></div>`;
+
+  document.getElementById('sec-budget').style.display = 'block';
+}
+
+// ── Render tips ───────────────────────────────────────────────────────────────
+function renderTips(tips) {
+  const g = document.getElementById('tips-grid');
+  if (!tips || !tips.length) return;
+  g.innerHTML = tips.map(t => `
+    <div class="tip-card">
+      <div class="tip-icon">${t.icon||'💡'}</div>
+      <div class="tip-title">${t.title}</div>
+      <div class="tip-text">${t.text}</div>
+    </div>`).join('');
+  document.getElementById('sec-tips').style.display = 'block';
+}
+
+// ── Render currency conversions ───────────────────────────────────────────────
+function renderCurrency(conv) {
+  if (!conv || !Object.keys(conv).length) return;
+  const el = document.getElementById('dash-currency');
+  el.innerHTML = Object.entries(conv).map(([k,v]) =>
+    `<span class="currency-tag"><strong>${k}</strong> ${v.toLocaleString()}</span>`).join('');
+  document.getElementById('sec-currency').style.display = 'block';
+}
+
+// ── Main init ─────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async () => {
+  const today = new Date().toISOString().split('T')[0];
+  document.querySelector('[name=start_date]').value = today;
+  await initSession();
+
+  document.getElementById('trip-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form    = e.target;
+    const planBtn = document.getElementById('plan-btn');
+    const interests = Array.from(form.querySelectorAll('input[name=interest]:checked')).map(c => c.value);
+
+    const payload = {
+      destination:        form.destination.value.trim(),
+      origin:             form.origin.value.trim(),
+      start_date:         form.start_date.value,
+      duration:           parseInt(form.duration.value)||7,
+      travellers:         parseInt(form.travellers.value)||1,
+      currency:           form.currency.value,
+      total_budget:       parseFloat(form.total_budget.value)||3000,
+      hotel_budget:       parseFloat(form.hotel_budget.value)||100,
+      daily_budget:       parseFloat(form.daily_budget.value)||80,
+      travel_style:       form.travel_style.value,
+      interests,
+      dietary:            form.dietary.value||'None',
+      accommodation_pref: form.accommodation_pref.value,
+      special_requests:   form.special_requests.value||'None',
+      session_id:         window.sessionId||'',
+    };
+
+    planBtn.disabled = true;
+    planBtn.innerHTML = '<span class="spinner"></span> Generating…';
+    document.getElementById('loading-card').classList.add('visible');
+    document.getElementById('plan-dashboard').classList.remove('visible');
+    document.getElementById('loading-card').scrollIntoView({behavior:'smooth',block:'center'});
+
+    try {
+      const data = await fetch('/api/plan/full', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(payload),
+      }).then(r => { if(!r.ok) throw new Error('API error '+r.status); return r.json(); });
+
+      document.getElementById('loading-card').classList.remove('visible');
+      const dash = document.getElementById('plan-dashboard');
+      dash.classList.add('visible');
+
+      const cur = data.currency||'USD';
+
+      // Header
+      document.getElementById('dash-title').textContent = `Your Trip to ${data.destination}`;
+      document.getElementById('dash-subtitle').textContent =
+        `${data.start_date}  →  ${data.end_date}  ·  ${data.duration} nights  ·  ${data.travellers} traveller(s)`;
+
+      // Weather
+      const w = data.weather;
+      if (w && w.temperature) {
+        document.getElementById('dash-weather').style.display = 'flex';
+        document.getElementById('dash-weather-text').innerHTML =
+          `<span class="weather-pill">🌡️ ${w.temperature}°C</span>` +
+          `<span class="weather-pill">☁️ ${w.description}</span>` +
+          `<span class="weather-pill">💧 Humidity ${w.humidity}%</span>` +
+          `<span class="weather-pill">💨 Wind ${w.wind_speed||'—'} m/s</span>`;
+      }
+
+      // Pills
+      document.getElementById('dash-pills').innerHTML = [
+        `📍 <strong>${data.destination}</strong>`,
+        `✈️ From <strong>${data.origin||payload.origin}</strong>`,
+        `🗓️ <strong>${data.duration} nights</strong>`,
+        `👥 <strong>${data.travellers}</strong> traveller(s)`,
+        `💰 Budget <strong>${cur} ${(data.total_budget||0).toLocaleString()}</strong>`,
+        `🏨 Hotel <strong>${cur} ${payload.hotel_budget}/night</strong>`,
+        `🎭 <strong>${payload.travel_style}</strong>`,
+      ].map(t=>`<span class="dash-pill">${t}</span>`).join('');
+
+      // Visual sections from structured data
+      const s = data.structured||{};
+      renderFlights(s.flights, cur);
+      renderHotels(s.hotels, cur);
+      renderItinerary(s.itinerary, cur);
+      renderBudget(s.budget, cur);
+      renderTips(s.tips);
+      renderCurrency(data.currency_conversions);
+
+      dash.scrollIntoView({behavior:'smooth',block:'start'});
+
+    } catch(err) {
+      document.getElementById('loading-card').classList.remove('visible');
+      alert('Error: '+err.message);
+    } finally {
+      planBtn.disabled = false;
+      planBtn.innerHTML = '🚀 Generate My Trip Plan';
+    }
+  });
+});
+</script>
+</body>
+</html>
