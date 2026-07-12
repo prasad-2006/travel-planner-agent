@@ -198,22 +198,35 @@ Return ONLY a valid JSON object (no markdown, no explanation) with this exact st
 Return ONLY the JSON. No markdown fences, no extra text."""
 
 
-ITINERARY_PROMPT_SIMPLE = """You are a travel planner. Create a day-by-day itinerary for a trip to {destination} for {duration} days starting {start_date}.
-Interests: {interests}. Travel style: {travel_style}. Daily budget: {daily_budget} {currency}.
+ITINERARY_PROMPT_SIMPLE = """Create a detailed day-by-day travel itinerary.
 
-Write EXACTLY {duration} days. For each day use this EXACT format (nothing else):
+Trip details:
+- Destination: {destination}
+- Duration: {duration} days
+- Start date: {start_date}
+- Interests: {interests}
+- Travel style: {travel_style}
+- Daily budget: {daily_budget} {currency}
 
-DAY 1 | <one-line theme title>
-MORNING: <specific morning activity with place name>
-AFTERNOON: <specific afternoon activity with place name>
-EVENING: <specific evening activity or restaurant recommendation>
+OUTPUT FORMAT — follow this exactly for every day, no deviations:
 
-DAY 2 | <one-line theme title>
-MORNING: <specific morning activity with place name>
-AFTERNOON: <specific afternoon activity with place name>
-EVENING: <specific evening activity or restaurant recommendation>
+DAY 1 | [Theme for Day 1]
+MORNING: [Specific morning activity with real place name in {destination}]
+AFTERNOON: [Specific afternoon activity with real place name in {destination}]
+EVENING: [Specific restaurant or evening activity with real name in {destination}]
 
-Continue for all {duration} days. Be specific — use real place names, landmarks, restaurants, and neighbourhoods in {destination}. No generic text."""
+DAY 2 | [Theme for Day 2]
+MORNING: [Specific morning activity with real place name in {destination}]
+AFTERNOON: [Specific afternoon activity with real place name in {destination}]
+EVENING: [Specific restaurant or evening activity with real name in {destination}]
+
+[Continue exactly this pattern for all {duration} days]
+
+Rules:
+- Use REAL names of places, restaurants, landmarks and neighbourhoods in {destination}
+- Each day must have a different unique theme
+- Every MORNING/AFTERNOON/EVENING line must be on its own line starting with that exact label
+- Do NOT add any other text, headers, or explanations"""
 
 
 CHAT_PROMPT = """You are a travel-only AI assistant powered by IBM Granite. Your sole purpose is to help users with travel-related topics.
@@ -433,8 +446,8 @@ class TravelPlannerAgent:
                                     start_date: str, daily_budget: float,
                                     destination: str) -> list:
         """
-        Parse a structured itinerary text that follows the DAY N | Title / MORNING / AFTERNOON / EVENING format.
-        Falls back gracefully if format isn't followed perfectly.
+        Parse itinerary text in DAY N | Title / MORNING: / AFTERNOON: / EVENING: format.
+        Robust to extra whitespace, missing labels, or different model output styles.
         """
         import re
         from datetime import datetime as dt, timedelta as td
@@ -445,81 +458,94 @@ class TravelPlannerAgent:
             except Exception:
                 return start_date
 
+        def clean(s):
+            return s.strip().replace("\n", " ").strip()[:200] if s else ""
+
         days = []
-        # Split on "DAY N" markers (case-insensitive)
-        day_blocks = re.split(r'\n?(?:DAY\s+(\d+))', text, flags=re.IGNORECASE)
 
-        # day_blocks pattern after split: ['preamble', '1', 'block1', '2', 'block2', ...]
-        # Extract pairs of (day_number, block_text)
-        i = 1
-        while i < len(day_blocks) - 1:
+        # Split the whole text into day blocks using DAY N as delimiter
+        # Pattern: split on lines that start with "DAY <number>"
+        day_sections = re.split(r'(?im)^DAY\s+(\d+)', text)
+        # day_sections = [preamble, '1', block1, '2', block2, ...]
+
+        idx = 1
+        while idx < len(day_sections) - 1:
             try:
-                day_num_str = day_blocks[i].strip()
-                block       = day_blocks[i + 1]
-                day_num     = int(day_num_str)
-                i += 2
+                day_num = int(day_sections[idx].strip())
+                block   = day_sections[idx + 1]
+                idx += 2
             except (ValueError, IndexError):
-                i += 1
+                idx += 1
                 continue
 
-            if day_num < 1 or day_num > duration:
+            if day_num < 1 or day_num > duration + 1:
                 continue
 
-            # Extract title from first line (after optional " | ")
-            lines  = block.strip().splitlines()
-            title  = ""
-            rest   = block
-            if lines:
-                first = lines[0].strip().lstrip("|").strip()
-                if first and len(first) < 120:
-                    title = first
-                    rest  = "\n".join(lines[1:])
-
+            # --- Title: first non-empty line (the "| Theme" part) ---
+            lines = [l.strip() for l in block.splitlines()]
+            title = ""
+            body_start = 0
+            for li, line in enumerate(lines):
+                if line:
+                    # Strip leading pipe/dash
+                    candidate = re.sub(r'^[\|\-\s]+', '', line).strip()
+                    # Only use as title if it doesn't look like a MORNING/AFTERNOON/EVENING line
+                    if candidate and not re.match(r'^(MORNING|AFTERNOON|EVENING)', candidate, re.I):
+                        title = candidate[:100]
+                        body_start = li + 1
+                    break
             if not title:
-                title = f"Day {day_num} in {destination}"
+                # Title-case the destination for display
+                dest_display = ' '.join(w.capitalize() for w in destination.split())
+                title = f"Day {day_num} in {dest_display}"
 
-            # Extract MORNING / AFTERNOON / EVENING
-            def extract(label, src):
-                m = re.search(rf'{label}[:\s]+(.+?)(?=\n(?:MORNING|AFTERNOON|EVENING)|$)',
-                              src, re.IGNORECASE | re.DOTALL)
+            body = "\n".join(lines[body_start:])
+
+            # --- Extract time-of-day slots ---
+            def extract_slot(label, src):
+                # Match "MORNING: text" until next slot or end
+                m = re.search(
+                    rf'(?im)^{label}[:\s]+(.+?)(?=\n(?:MORNING|AFTERNOON|EVENING)|$)',
+                    src, re.DOTALL
+                )
                 if m:
-                    val = m.group(1).strip().replace("\n", " ")
-                    # Trim very long values
-                    return val[:200] if len(val) > 200 else val
+                    return clean(m.group(1))
                 return ""
 
-            morning   = extract("MORNING",   rest)
-            afternoon = extract("AFTERNOON", rest)
-            evening   = extract("EVENING",   rest)
+            morning   = extract_slot("MORNING",   body)
+            afternoon = extract_slot("AFTERNOON", body)
+            evening   = extract_slot("EVENING",   body)
 
-            # If structured extraction failed, fall back to splitting by lines
-            if not morning and not afternoon and not evening:
-                non_empty = [l.strip() for l in rest.splitlines() if l.strip()]
-                morning   = non_empty[0] if len(non_empty) > 0 else f"Explore {destination}"
-                afternoon = non_empty[1] if len(non_empty) > 1 else f"Visit local landmarks"
-                evening   = non_empty[2] if len(non_empty) > 2 else f"Dinner at local restaurant"
+            # Fallback: use non-empty lines in order if labels not found
+            if not (morning or afternoon or evening):
+                non_empty = [l for l in lines[body_start:] if l and not re.match(
+                    r'^(MORNING|AFTERNOON|EVENING)', l, re.I)]
+                morning   = clean(non_empty[0]) if len(non_empty) > 0 else f"Explore {destination}"
+                afternoon = clean(non_empty[1]) if len(non_empty) > 1 else "Visit local landmarks"
+                evening   = clean(non_empty[2]) if len(non_empty) > 2 else "Dinner at local restaurant"
 
             days.append({
                 "day":       day_num,
                 "date":      get_date(day_num - 1),
                 "title":     title,
-                "morning":   morning   or f"Morning exploration in {destination}",
-                "afternoon": afternoon or f"Afternoon sightseeing",
-                "evening":   evening   or f"Evening dining experience",
+                "morning":   morning   or f"Explore {destination}",
+                "afternoon": afternoon or "Visit local landmarks",
+                "evening":   evening   or "Dinner at local restaurant",
                 "est_cost":  round(daily_budget),
             })
 
-        # Sort and fill any missing days
+        # Fill any missing days
         days.sort(key=lambda x: x["day"])
-        existing_days = {d["day"] for d in days}
+        existing = {d["day"] for d in days}
+        dest_display = ' '.join(w.capitalize() for w in destination.split())
         for n in range(1, duration + 1):
-            if n not in existing_days:
+            if n not in existing:
                 days.append({
                     "day":       n,
                     "date":      get_date(n - 1),
-                    "title":     f"Day {n} in {destination}",
-                    "morning":   "Explore local area and attractions",
-                    "afternoon": "Visit key landmarks and museums",
+                    "title":     f"Day {n} in {dest_display}",
+                    "morning":   f"Explore {destination}",
+                    "afternoon": "Visit local landmarks and museums",
                     "evening":   "Dinner at a recommended local restaurant",
                     "est_cost":  round(daily_budget),
                 })
