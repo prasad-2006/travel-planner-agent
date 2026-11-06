@@ -5,6 +5,7 @@
 
 const API = "/api";
 let sessionId = null;
+let chatEngine = { label: "IBM Granite", langflow: false };
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Utilities
@@ -80,6 +81,35 @@ async function initSession() {
     console.warn("Could not create session:", e);
     sessionId = "local-" + Math.random().toString(36).slice(2, 10);
     window.sessionId = sessionId;
+  }
+}
+
+async function initEngineStatus() {
+  try {
+    const h = await get("/health");
+    chatEngine.langflow = !!h.langflow_enabled;
+    chatEngine.label    = h.langflow_enabled
+      ? "Langflow + IBM Granite"
+      : "IBM Granite";
+    window.chatEngine = chatEngine;
+
+    // Update any engine badges already in the DOM
+    document.querySelectorAll(".engine-label").forEach((el) => {
+      el.textContent = chatEngine.langflow
+        ? "⚡ Langflow · IBM Granite"
+        : "⚡ IBM Granite";
+    });
+    const badge = document.getElementById("engine-badge");
+    if (badge) {
+      badge.textContent = chatEngine.langflow
+        ? "Langflow ✓"
+        : "IBM Granite";
+      badge.className = chatEngine.langflow
+        ? "engine-status-badge langflow-active"
+        : "engine-status-badge";
+    }
+  } catch (_) {
+    // health endpoint unreachable — keep defaults
   }
 }
 
@@ -332,7 +362,10 @@ function initChat() {
     const div = document.createElement("div");
     div.className = `chat-bubble ${role}`;
     if (role === "assistant") {
-      div.innerHTML = `<div class="bubble-header">⚡ IBM Granite</div>${formatMarkdown(text)}`;
+      const engineLabel = chatEngine.langflow
+        ? "⚡ Langflow · IBM Granite"
+        : "⚡ IBM Granite";
+      div.innerHTML = `<div class="bubble-header engine-label">${engineLabel}</div>${formatMarkdown(text)}`;
     } else {
       div.textContent = text;
     }
@@ -393,6 +426,7 @@ function initChat() {
 
 document.addEventListener("DOMContentLoaded", async () => {
   await initSession();
+  await initEngineStatus();
   initTabs(".planner-tabs");
   initDestinationForm();
   initItineraryForm();

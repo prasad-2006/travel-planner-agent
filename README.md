@@ -41,7 +41,8 @@ travel-planner-agent/
 │   │   ├── destination_service.py      # Wikipedia + Nominatim (free)
 │   │   ├── visa_service.py             # Curated country facts (built-in)
 │   │   ├── amadeus_service.py          # Live flights/hotels (optional key)
-│   │   └── places_service.py          # Attractions (optional key)
+│   │   ├── places_service.py           # Attractions (optional key)
+│   │   └── langflow_service.py         # Langflow orchestration (optional)
 │   └── routes/
 │       └── api_routes.py               # Flask REST API endpoints
 │
@@ -105,6 +106,7 @@ python app.py
 | `OPENWEATHER_API_KEY` | ❌ Optional | [openweathermap.org/api](https://openweathermap.org/api) | Higher weather quota (wttr.in used if blank) |
 | `AMADEUS_API_KEY` + `SECRET` | ❌ Optional | [developers.amadeus.com](https://developers.amadeus.com) | Live real flight & hotel prices |
 | `OPENTRIPMAP_API_KEY` | ❌ Optional | [dev.opentripmap.org](https://dev.opentripmap.org) | Live tourist attractions |
+| `LANGFLOW_HOST` + `LANGFLOW_FLOW_ID` | ❌ Optional | Your Langflow instance | Visual flow orchestration for chat |
 
 **Live data that works with zero extra keys:**
 - 🌤️ Weather — [wttr.in](https://wttr.in) (completely free, no registration)
@@ -126,6 +128,44 @@ python app.py
 | `GET` | `/api/weather/:city/forecast` | 5-day forecast |
 | `GET` | `/api/currency/convert` | Currency conversion |
 | `GET` | `/api/health` | Health check |
+
+---
+
+## 🔀 Langflow Integration (Optional)
+
+Langflow adds a **visual drag-and-drop flow builder** on top of the chat pipeline. When configured, the `/api/chat` endpoint is routed through your Langflow flow first — Granite is used as a direct fallback if Langflow is unreachable.
+
+### Quick Setup
+
+**Option A — Local (pip):**
+
+```bash
+pip install langflow
+langflow run           # → http://127.0.0.1:7860
+```
+
+**Option B — Docker:**
+
+```bash
+docker run -p 7860:7860 langflowai/langflow:latest
+```
+
+### Configure the flow
+
+1. Open `http://127.0.0.1:7860` in your browser.
+2. Click **+ New Flow** → drag in a **Chat Input** → **IBM Watsonx / any LLM component** → **Chat Output**.
+3. Copy the flow UUID from the URL bar: `http://127.0.0.1:7860/flow/<FLOW_ID>`.
+4. Set the env vars in your `.env`:
+
+```env
+LANGFLOW_HOST=http://127.0.0.1:7860
+LANGFLOW_FLOW_ID=<paste-your-flow-uuid-here>
+# LANGFLOW_API_KEY=   ← only if you enabled auth in Langflow settings
+```
+
+5. Restart the Flask app — you'll see **Langflow ✓** in the startup log.
+
+> **Fallback behaviour:** If Langflow is not configured, returns a connection error, or returns an empty response, the chat endpoint automatically falls back to the direct IBM Granite call — so the app works identically with or without Langflow running.
 
 ---
 

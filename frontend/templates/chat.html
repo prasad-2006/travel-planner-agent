@@ -29,6 +29,17 @@
       0%,100% { box-shadow: 0 0 0 2px rgba(36,161,72,.3); }
       50%      { box-shadow: 0 0 0 5px rgba(36,161,72,.1); }
     }
+    /* Engine status badge */
+    .engine-status-badge {
+      font-size: .72rem; font-weight: 600; padding: 3px 10px;
+      border-radius: 12px; border: 1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.08); color: rgba(255,255,255,.65);
+      transition: all .3s;
+    }
+    .engine-status-badge.langflow-active {
+      background: rgba(105,41,196,.35); border-color: rgba(162,155,254,.5);
+      color: #a29bfe;
+    }
 
     /* Context bar */
     .context-bar {
@@ -141,9 +152,12 @@
     <div class="chat-header-left">
       <span class="online-dot"></span>
       <h2>Travel Assistant</h2>
-      <span class="granite-badge">⚡ IBM Granite 4</span>
+      <span class="granite-badge engine-label">⚡ IBM Granite</span>
     </div>
-    <span style="color:rgba(255,255,255,.45); font-size:.79rem;">IBM Cloud Lite</span>
+    <div style="display:flex;align-items:center;gap:.6rem;">
+      <span id="engine-badge" class="engine-status-badge">IBM Granite</span>
+      <span style="color:rgba(255,255,255,.45); font-size:.79rem;">IBM Cloud Lite</span>
+    </div>
   </div>
 
   <!-- Context bar -->
@@ -158,7 +172,7 @@
   <!-- Messages -->
   <div class="chat-messages" id="chat-messages">
     <div class="welcome-card">
-      <div class="bubble-header">⚡ IBM Granite · Travel Assistant</div>
+      <div class="bubble-header engine-label">⚡ IBM Granite · Travel Assistant</div>
       <strong>Hello! I'm your AI Travel Assistant</strong> ✈️<br><br>
       I can help you plan any kind of trip. Just tell me where you want to go, your budget, and interests — or use the quick prompts below to get started.
       <div class="welcome-grid">
@@ -203,6 +217,7 @@
 <script>
 document.addEventListener("DOMContentLoaded", async () => {
   await initSession();
+  await initEngineStatus();
   initChat();
 });
 

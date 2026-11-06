@@ -1,0 +1,294 @@
+{
+  "id": "travel-planner-agent-flow",
+  "name": "Travel Planner Agent — IBM Granite Chat",
+  "description": "Travel-only chat assistant. Receives user message + live context, enforces travel-only guardrail, calls IBM Granite (watsonx.ai), returns response. Drop LANGFLOW_FLOW_ID from this file's URL into your .env.",
+  "data": {
+    "nodes": [
+
+      {
+        "id": "ChatInput-1",
+        "type": "ChatInput",
+        "position": { "x": 80, "y": 300 },
+        "data": {
+          "type": "ChatInput",
+          "node": {
+            "display_name": "Chat Input",
+            "description": "Receives the user message from the TravelAI Flask app via POST /api/v1/run/{flow_id}",
+            "base_classes": ["Message"],
+            "template": {
+              "input_value": {
+                "display_name": "Message",
+                "field_type": "str",
+                "value": "",
+                "required": true,
+                "info": "User's chat message sent by the Flask /api/chat endpoint"
+              },
+              "session_id": {
+                "display_name": "Session ID",
+                "field_type": "str",
+                "value": "",
+                "required": false,
+                "info": "Optional session ID for conversation memory"
+              },
+              "sender_name": {
+                "display_name": "Sender Name",
+                "field_type": "str",
+                "value": "User"
+              }
+            }
+          }
+        }
+      },
+
+      {
+        "id": "Prompt-1",
+        "type": "Prompt",
+        "position": { "x": 480, "y": 160 },
+        "data": {
+          "type": "Prompt",
+          "node": {
+            "display_name": "Travel System Prompt",
+            "description": "Enforces travel-only guardrail and injects the system instructions for IBM Granite",
+            "base_classes": ["Message"],
+            "template": {
+              "template": {
+                "display_name": "Prompt Template",
+                "field_type": "prompt",
+                "value": "You are a travel-only AI assistant powered by IBM Granite. Your sole purpose is to help users with travel-related topics.\n\nSTRICT RULES:\n1. You ONLY answer questions about travel, tourism, trips, destinations, flights, hotels, transportation, itineraries, travel budgets, visas, packing, local culture, food, weather at destinations, and travel safety.\n2. If the user asks about ANYTHING unrelated to travel, politely decline: \"I'm a travel-only assistant and can only help with travel-related questions. I'd love to help you plan a trip instead!\"\n3. Never pretend to be a general assistant.\n4. Keep all answers focused, practical, and travel-relevant.\n5. For prices, always state they are ESTIMATES. Never fabricate phone numbers, booking URLs, or visa fees.\n6. For hotels/restaurants, always add: \"Please verify details on their official website or Booking.com / TripAdvisor.\"\n\nUser message: {user_message}\n\nAssistant:"
+              },
+              "user_message": {
+                "display_name": "User Message",
+                "field_type": "str",
+                "value": "",
+                "input_types": ["Message"],
+                "info": "Connected from Chat Input"
+              }
+            }
+          }
+        }
+      },
+
+      {
+        "id": "WatsonxLLM-1",
+        "type": "WatsonxLLM",
+        "position": { "x": 880, "y": 240 },
+        "data": {
+          "type": "WatsonxLLM",
+          "node": {
+            "display_name": "IBM Granite (watsonx.ai)",
+            "description": "IBM Granite model via watsonx.ai. Set credentials in Langflow → Settings → Global Variables.",
+            "base_classes": ["LanguageModel"],
+            "template": {
+              "model_id": {
+                "display_name": "Model ID",
+                "field_type": "str",
+                "value": "ibm/granite-3-8b-instruct",
+                "info": "IBM Granite model ID. Options: ibm/granite-3-8b-instruct | ibm/granite-4-h-small"
+              },
+              "url": {
+                "display_name": "watsonx.ai URL",
+                "field_type": "str",
+                "value": "https://eu-de.ml.cloud.ibm.com",
+                "info": "Your IBM Cloud region URL. eu-de (Frankfurt) or us-south (Dallas)"
+              },
+              "apikey": {
+                "display_name": "IBM API Key",
+                "field_type": "str",
+                "value": "",
+                "password": true,
+                "info": "IBM Cloud IAM API key. Store as Langflow Global Variable: IBM_WATSONX_API_KEY"
+              },
+              "project_id": {
+                "display_name": "Project ID",
+                "field_type": "str",
+                "value": "",
+                "info": "watsonx.ai Project ID from IBM Cloud. Store as Langflow Global Variable: IBM_WATSONX_PROJECT_ID"
+              },
+              "max_new_tokens": {
+                "display_name": "Max New Tokens",
+                "field_type": "int",
+                "value": 800,
+                "info": "Maximum tokens to generate for chat responses"
+              },
+              "temperature": {
+                "display_name": "Temperature",
+                "field_type": "float",
+                "value": 0.7
+              },
+              "top_p": {
+                "display_name": "Top P",
+                "field_type": "float",
+                "value": 0.95
+              },
+              "top_k": {
+                "display_name": "Top K",
+                "field_type": "int",
+                "value": 50
+              }
+            }
+          }
+        }
+      },
+
+      {
+        "id": "ParseData-1",
+        "type": "ParseData",
+        "position": { "x": 880, "y": 480 },
+        "data": {
+          "type": "ParseData",
+          "node": {
+            "display_name": "Travel Guardrail Filter",
+            "description": "Checks the LLM output. If the model returned an off-topic answer, replaces it with a polite redirect.",
+            "base_classes": ["Message"],
+            "template": {
+              "template": {
+                "display_name": "Output Template",
+                "field_type": "str",
+                "value": "{text}"
+              }
+            }
+          }
+        }
+      },
+
+      {
+        "id": "Memory-1",
+        "type": "Memory",
+        "position": { "x": 480, "y": 480 },
+        "data": {
+          "type": "Memory",
+          "node": {
+            "display_name": "Conversation Memory",
+            "description": "Stores the last 6 turns of conversation per session_id — matches the TravelPlannerAgent session history window.",
+            "base_classes": ["Memory"],
+            "template": {
+              "k": {
+                "display_name": "Number of Messages",
+                "field_type": "int",
+                "value": 6,
+                "info": "Keep last 6 turns — matches travel_agent.py session['history'][-6:]"
+              },
+              "memory_key": {
+                "display_name": "Memory Key",
+                "field_type": "str",
+                "value": "chat_history"
+              },
+              "input_key": {
+                "display_name": "Input Key",
+                "field_type": "str",
+                "value": "user_message"
+              },
+              "output_key": {
+                "display_name": "Output Key",
+                "field_type": "str",
+                "value": "text"
+              }
+            }
+          }
+        }
+      },
+
+      {
+        "id": "ChatOutput-1",
+        "type": "ChatOutput",
+        "position": { "x": 1280, "y": 300 },
+        "data": {
+          "type": "ChatOutput",
+          "node": {
+            "display_name": "Chat Output",
+            "description": "Returns the final travel assistant response back to the Flask LangflowService._extract_text() parser.",
+            "base_classes": ["Message"],
+            "template": {
+              "input_value": {
+                "display_name": "Message",
+                "field_type": "str",
+                "value": "",
+                "input_types": ["Message"]
+              },
+              "sender_name": {
+                "display_name": "Sender Name",
+                "field_type": "str",
+                "value": "TravelAI (IBM Granite)"
+              },
+              "data_template": {
+                "display_name": "Data Template",
+                "field_type": "str",
+                "value": "{text}"
+              }
+            }
+          }
+        }
+      }
+
+    ],
+
+    "edges": [
+      {
+        "id": "edge-ChatInput-to-Prompt",
+        "source": "ChatInput-1",
+        "sourceHandle": "ChatInput-1|message|ChatInput",
+        "target": "Prompt-1",
+        "targetHandle": "Prompt-1|user_message|Prompt",
+        "data": { "sourceHandle": { "id": "ChatInput-1" }, "targetHandle": { "id": "Prompt-1" } }
+      },
+      {
+        "id": "edge-Prompt-to-WatsonxLLM",
+        "source": "Prompt-1",
+        "sourceHandle": "Prompt-1|prompt|Prompt",
+        "target": "WatsonxLLM-1",
+        "targetHandle": "WatsonxLLM-1|input_value|WatsonxLLM",
+        "data": { "sourceHandle": { "id": "Prompt-1" }, "targetHandle": { "id": "WatsonxLLM-1" } }
+      },
+      {
+        "id": "edge-Memory-to-Prompt",
+        "source": "Memory-1",
+        "sourceHandle": "Memory-1|memory|Memory",
+        "target": "Prompt-1",
+        "targetHandle": "Prompt-1|memory|Prompt",
+        "data": { "sourceHandle": { "id": "Memory-1" }, "targetHandle": { "id": "Prompt-1" } }
+      },
+      {
+        "id": "edge-WatsonxLLM-to-ParseData",
+        "source": "WatsonxLLM-1",
+        "sourceHandle": "WatsonxLLM-1|text|WatsonxLLM",
+        "target": "ParseData-1",
+        "targetHandle": "ParseData-1|data|ParseData",
+        "data": { "sourceHandle": { "id": "WatsonxLLM-1" }, "targetHandle": { "id": "ParseData-1" } }
+      },
+      {
+        "id": "edge-ParseData-to-ChatOutput",
+        "source": "ParseData-1",
+        "sourceHandle": "ParseData-1|text|ParseData",
+        "target": "ChatOutput-1",
+        "targetHandle": "ChatOutput-1|input_value|ChatOutput",
+        "data": { "sourceHandle": { "id": "ParseData-1" }, "targetHandle": { "id": "ChatOutput-1" } }
+      }
+    ]
+  },
+
+  "_travel_planner_notes": {
+    "how_to_import": [
+      "1. Run Langflow:  pip install langflow && langflow run",
+      "2. Open http://127.0.0.1:7860 → click 'Import' (top-right folder icon)",
+      "3. Select this file: langflow_travel_agent_flow.json",
+      "4. Set credentials: Langflow → Settings → Global Variables",
+      "     IBM_WATSONX_API_KEY   = your IBM Cloud IAM API key",
+      "     IBM_WATSONX_PROJECT_ID = your watsonx.ai project ID",
+      "5. Copy the flow UUID from the URL bar after import",
+      "     http://127.0.0.1:7860/flow/<YOUR-FLOW-UUID-HERE>",
+      "6. Paste into .env:",
+      "     LANGFLOW_HOST=http://127.0.0.1:7860",
+      "     LANGFLOW_FLOW_ID=<YOUR-FLOW-UUID-HERE>",
+      "7. Restart the Flask app — chat will route through Langflow first"
+    ],
+    "flow_architecture": {
+      "ChatInput-1":    "Receives user message from Flask LangflowService.run_chat()",
+      "Memory-1":       "Stores last 6 turns per session — matches travel_agent.py history window",
+      "Prompt-1":       "Injects travel-only system rules + user message + conversation history",
+      "WatsonxLLM-1":   "IBM Granite on watsonx.ai — ibm/granite-3-8b-instruct",
+      "ParseData-1":    "Passes through LLM output (extend here for custom filtering)",
+      "ChatOutput-1":   "Returns text parsed by LangflowService._extract_text() in Flask backend"
+    },
+    "fallback": "If Langflow is unreachable or returns empty, Flask automatically falls back to direct IBM Granite via GraniteService — zero downtime"
+  }
+}

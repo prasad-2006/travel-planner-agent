@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Langflow Workflow — Travel Planner Agent</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #1a1f2e;
+    font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 2rem;
+  }
+
+  .canvas {
+    background: #1e2436;
+    border-radius: 16px;
+    border: 1px solid #2d3450;
+    padding: 2.5rem 3rem;
+    width: 960px;
+    position: relative;
+    box-shadow: 0 24px 80px rgba(0,0,0,.55);
+  }
+
+  /* grid dot background */
+  .canvas::before {
+    content: "";
+    position: absolute; inset: 0;
+    border-radius: 16px;
+    background-image: radial-gradient(circle, #2d345066 1px, transparent 1px);
+    background-size: 28px 28px;
+    pointer-events: none;
+  }
+
+  /* ── top bar ── */
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 2.25rem; position: relative;
+  }
+  .topbar-left { display: flex; align-items: center; gap: .6rem; }
+  .dot { width: 11px; height: 11px; border-radius: 50%; }
+  .dot-r { background: #ff5f57; }
+  .dot-y { background: #ffbd2e; }
+  .dot-g { background: #28c840; }
+  .flow-name {
+    font-size: .8rem; font-weight: 600; color: #8892b0;
+    background: #252d45; border: 1px solid #2d3450;
+    border-radius: 6px; padding: 3px 14px;
+  }
+  .topbar-right { display: flex; gap: .5rem; }
+  .tb-btn {
+    font-size: .72rem; font-weight: 600; color: #8892b0;
+    background: #252d45; border: 1px solid #2d3450;
+    border-radius: 6px; padding: 3px 13px; cursor: default;
+  }
+  .tb-run {
+    background: #0f62fe18; border-color: #0f62fe55;
+    color: #74b9ff;
+  }
+
+  /* ── flow stage ── */
+  .stage {
+    position: relative;
+    height: 480px;
+  }
+
+  svg.arrows {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    overflow: visible;
+  }
+
+  /* ── nodes ── */
+  .node {
+    position: absolute;
+    width: 148px;
+    border-radius: 12px;
+    border: 1.5px solid #3a4466;
+    background: #252d45;
+    box-shadow: 0 4px 20px rgba(0,0,0,.4);
+    overflow: visible;
+  }
+  .nh {
+    padding: .45rem .8rem;
+    display: flex; align-items: center; gap: .4rem;
+    font-size: .65rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .5px;
+    border-bottom: 1px solid #3a4466;
+    border-radius: 10px 10px 0 0;
+  }
+  .nb { padding: .65rem .8rem .75rem; }
+  .ni { font-size: 1.55rem; display: block; margin-bottom: .3rem; }
+  .nt { font-size: .82rem; font-weight: 700; color: #ccd6f6; margin-bottom: .12rem; }
+  .ns { font-size: .69rem; color: #8892b0; line-height: 1.45; }
+  .ntag {
+    display: inline-block; font-size: .62rem; font-weight: 700;
+    padding: 1px 8px; border-radius: 10px; margin-top: .38rem;
+    letter-spacing: .25px;
+  }
+
+  /* port circles */
+  .p {
+    width: 11px; height: 11px; border-radius: 50%;
+    border: 2px solid #1e2436;
+    position: absolute;
+  }
+  .pr { right: -6px;  top: 50%; transform: translateY(-50%); }
+  .pl { left: -6px;   top: 50%; transform: translateY(-50%); }
+  .pt { top: -6px;    left: 50%; transform: translateX(-50%); }
+  .pb { bottom: -6px; left: 50%; transform: translateX(-50%); }
+
+  /* colour themes */
+  .blue   { border-color: #3b82f6; }
+  .blue   .nh  { background: #1d3a6e; color: #74b9ff; }
+  .blue   .p   { background: #3b82f6; }
+  .blue   .ntag{ background: #1d3a6e; color: #74b9ff; }
+
+  .amber  { border-color: #f59e0b; }
+  .amber  .nh  { background: #3d2e00; color: #fcd34d; }
+  .amber  .p   { background: #f59e0b; }
+  .amber  .ntag{ background: #3d2e00; color: #fcd34d; }
+
+  .ibm    { border-color: #0f62fe; }
+  .ibm    .nh  { background: #08204a; color: #74b9ff; }
+  .ibm    .p   { background: #0f62fe; }
+  .ibm    .ntag{ background: #08204a; color: #74b9ff; }
+
+  .purple { border-color: #8b5cf6; }
+  .purple .nh  { background: #2d1b5e; color: #c4b5fd; }
+  .purple .p   { background: #8b5cf6; }
+  .purple .ntag{ background: #2d1b5e; color: #c4b5fd; }
+
+  .slate  { border-color: #475569; }
+  .slate  .nh  { background: #1e2a3a; color: #94a3b8; }
+  .slate  .p   { background: #475569; }
+  .slate  .ntag{ background: #1e2a3a; color: #94a3b8; }
+
+  .green  { border-color: #22c55e; }
+  .green  .nh  { background: #0f2d1e; color: #86efac; }
+  .green  .p   { background: #22c55e; }
+  .green  .ntag{ background: #0f2d1e; color: #86efac; }
+
+  /* edge labels */
+  .elabel {
+    position: absolute;
+    font-size: .62rem; font-weight: 600;
+    color: #8892b0;
+    background: #1e2436;
+    border: 1px solid #3a4466;
+    border-radius: 8px;
+    padding: 1px 7px;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+
+  /* ── footer ── */
+  .footer {
+    margin-top: 1.75rem;
+    border-top: 1px solid #2d3450;
+    padding-top: 1rem;
+    display: flex; align-items: center; justify-content: space-between;
+    position: relative;
+  }
+  .footer span { font-size: .71rem; color: #4b5680; }
+  .legend { display: flex; gap: 1rem; }
+  .li { display: flex; align-items: center; gap: .35rem; font-size: .69rem; color: #8892b0; }
+  .ld { width: 8px; height: 8px; border-radius: 50%; }
+</style>
+</head>
+<body>
+
+<div class="canvas">
+
+  <!-- top bar -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <span class="dot dot-r"></span>
+      <span class="dot dot-y"></span>
+      <span class="dot dot-g"></span>
+      <span class="flow-name">travel-planner-agent &nbsp;/&nbsp; IBM Granite Chat Flow</span>
+    </div>
+    <div class="topbar-right">
+      <span class="tb-btn">Zoom 100%</span>
+      <span class="tb-btn">Auto-layout</span>
+      <span class="tb-btn tb-run">&#9654;&nbsp; Run</span>
+    </div>
+  </div>
+
+  <!-- stage -->
+  <div class="stage">
+
+    <!-- ── SVG arrows ── -->
+    <svg class="arrows" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <!-- default grey arrow -->
+        <marker id="a" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+          <polygon points="0,0 8,4 0,8" fill="#4b5680"/>
+        </marker>
+        <!-- green arrow -->
+        <marker id="ag" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+          <polygon points="0,0 8,4 0,8" fill="#22c55e"/>
+        </marker>
+        <!-- purple arrow -->
+        <marker id="ap" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+          <polygon points="0,0 8,4 0,8" fill="#8b5cf6"/>
+        </marker>
+        <!-- blue arrow -->
+        <marker id="ab" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+          <polygon points="0,0 8,4 0,8" fill="#3b82f6"/>
+        </marker>
+      </defs>
+
+      <!-- ChatInput → Prompt  (horizontal main) -->
+      <path d="M 192 148 L 266 148"
+            stroke="#4b5680" stroke-width="1.8" fill="none" marker-end="url(#a)"/>
+
+      <!-- Prompt → WatsonxLLM  (horizontal main) -->
+      <path d="M 416 148 L 490 148"
+            stroke="#4b5680" stroke-width="1.8" fill="none" marker-end="url(#a)"/>
+
+      <!-- WatsonxLLM → ParseData  (horizontal main) -->
+      <path d="M 640 148 L 714 148"
+            stroke="#4b5680" stroke-width="1.8" fill="none" marker-end="url(#a)"/>
+
+      <!-- ParseData → ChatOutput  (vertical down) -->
+      <path d="M 788 202 L 788 258"
+            stroke="#22c55e" stroke-width="1.8" fill="none" marker-end="url(#ag)"/>
+
+      <!-- Memory → Prompt  (vertical up, dashed purple) -->
+      <path d="M 341 308 L 341 204"
+            stroke="#8b5cf6" stroke-width="1.8" fill="none"
+            stroke-dasharray="6,3" marker-end="url(#ap)"/>
+
+      <!-- ChatInput session_id loop → Memory  (curved dashed blue) -->
+      <path d="M 96 198 C 96 340 200 358 262 340"
+            stroke="#3b82f6" stroke-width="1.5" fill="none"
+            stroke-dasharray="5,3" opacity=".65" marker-end="url(#ab)"/>
+
+    </svg>
+
+    <!-- edge labels -->
+    <div class="elabel" style="left:198px; top:132px;">message</div>
+    <div class="elabel" style="left:422px; top:132px;">prompt</div>
+    <div class="elabel" style="left:646px; top:132px;">text</div>
+    <div class="elabel" style="left:795px; top:224px; color:#86efac; border-color:#22c55e44;">output</div>
+    <div class="elabel" style="left:348px; top:252px; color:#c4b5fd; border-color:#8b5cf644;">history</div>
+    <div class="elabel" style="left:44px; top:272px; color:#74b9ff; border-color:#3b82f644; font-size:.59rem;">session_id</div>
+
+
+    <!-- ── NODE 1 — Chat Input ── -->
+    <div class="node blue" style="left:44px; top:104px;">
+      <div class="nh">💬 Chat Input</div>
+      <div class="nb">
+        <span class="ni">📨</span>
+        <div class="nt">User Message</div>
+        <div class="ns">input_value<br/>session_id</div>
+        <span class="ntag">ChatInput</span>
+      </div>
+      <div class="p pr"></div>
+      <div class="p pb" style="left:38%;"></div>
+    </div>
+
+    <!-- ── NODE 2 — Prompt ── -->
+    <div class="node amber" style="left:266px; top:104px;">
+      <div class="nh">📝 Prompt</div>
+      <div class="nb">
+        <span class="ni">🗒️</span>
+        <div class="nt">Travel Prompt</div>
+        <div class="ns">system rules<br/>+ user msg<br/>+ history</div>
+        <span class="ntag">Prompt</span>
+      </div>
+      <div class="p pl"></div>
+      <div class="p pr"></div>
+      <div class="p pb"></div>
+    </div>
+
+    <!-- ── NODE 3 — Memory ── -->
+    <div class="node purple" style="left:266px; top:308px;">
+      <div class="nh">🧠 Memory</div>
+      <div class="nb">
+        <span class="ni">💾</span>
+        <div class="nt">Conv. Memory</div>
+        <div class="ns">last 6 turns<br/>per session_id</div>
+        <span class="ntag">Memory</span>
+      </div>
+      <div class="p pt"></div>
+      <div class="p pl"></div>
+    </div>
+
+    <!-- ── NODE 4 — IBM Granite ── -->
+    <div class="node ibm" style="left:490px; top:92px;">
+      <div class="nh">⚡ WatsonxLLM</div>
+      <div class="nb">
+        <span class="ni">🤖</span>
+        <div class="nt">IBM Granite</div>
+        <div class="ns">granite-3-8b<br/>max 800 tokens<br/>temp 0.7</div>
+        <span class="ntag">watsonx.ai</span>
+      </div>
+      <div class="p pl"></div>
+      <div class="p pr"></div>
+    </div>
+
+    <!-- ── NODE 5 — Parse / Filter ── -->
+    <div class="node slate" style="left:714px; top:104px;">
+      <div class="nh">🔍 ParseData</div>
+      <div class="nb">
+        <span class="ni">🧹</span>
+        <div class="nt">Filter Output</div>
+        <div class="ns">pass-through<br/>extend for<br/>safety checks</div>
+        <span class="ntag">ParseData</span>
+      </div>
+      <div class="p pl"></div>
+      <div class="p pb"></div>
+    </div>
+
+    <!-- ── NODE 6 — Chat Output ── -->
+    <div class="node green" style="left:714px; top:258px;">
+      <div class="nh">✅ Chat Output</div>
+      <div class="nb">
+        <span class="ni">📤</span>
+        <div class="nt">Response</div>
+        <div class="ns">→ Flask<br/>LangflowService<br/>._extract_text()</div>
+        <span class="ntag">ChatOutput</span>
+      </div>
+      <div class="p pt"></div>
+      <div class="p pl"></div>
+    </div>
+
+  </div><!-- /stage -->
+
+  <!-- footer -->
+  <div class="footer">
+    <span>6 nodes &nbsp;·&nbsp; 5 edges &nbsp;·&nbsp; IBM Granite chat pipeline &nbsp;·&nbsp; travel-planner-agent</span>
+    <div class="legend">
+      <div class="li"><div class="ld" style="background:#3b82f6;"></div>Input / Session</div>
+      <div class="li"><div class="ld" style="background:#f59e0b;"></div>Prompt</div>
+      <div class="li"><div class="ld" style="background:#0f62fe;"></div>IBM Granite LLM</div>
+      <div class="li"><div class="ld" style="background:#8b5cf6;"></div>Memory</div>
+      <div class="li"><div class="ld" style="background:#475569;"></div>Filter</div>
+      <div class="li"><div class="ld" style="background:#22c55e;"></div>Output</div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

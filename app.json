@@ -1,0 +1,95 @@
+{
+  "name": "TravelAI - IBM Granite Travel Planner",
+  "description": "An AI-powered travel planning assistant built on IBM Granite (watsonx.ai) with real-time live data integration. Generates complete trip plans including flights, hotels, day-by-day itinerary, budget breakdown, live weather, currency exchange rates and country facts.",
+  "keywords": [
+    "travel",
+    "ai",
+    "ibm",
+    "granite",
+    "watsonx",
+    "flask",
+    "travel-planner",
+    "itinerary",
+    "agentic-ai"
+  ],
+  "website": "https://github.com/prasadbonu5536-dp/IBM-AICTE",
+  "repository": "https://github.com/prasadbonu5536-dp/IBM-AICTE",
+  "logo": "https://www.ibm.com/favicon.ico",
+  "success_url": "/",
+  "scripts": {
+    "postdeploy": "echo TravelAI deployed successfully"
+  },
+  "env": {
+    "IBM_WATSONX_API_KEY": {
+      "description": "Your IBM watsonx.ai API Key. Get it from IBM Cloud -> IAM -> API Keys.",
+      "required": true
+    },
+    "IBM_WATSONX_PROJECT_ID": {
+      "description": "Your IBM watsonx.ai Project ID. Get it from watsonx.ai project -> Manage tab.",
+      "required": true
+    },
+    "IBM_WATSONX_URL": {
+      "description": "IBM watsonx.ai endpoint URL.",
+      "required": true,
+      "value": "https://eu-de.ml.cloud.ibm.com"
+    },
+    "GRANITE_CHAT_MODEL": {
+      "description": "IBM Granite model ID to use for AI generation.",
+      "required": false,
+      "value": "ibm/granite-3-8b-instruct"
+    },
+    "FLASK_ENV": {
+      "description": "Flask environment - use production for deployment.",
+      "required": false,
+      "value": "production"
+    },
+    "SECRET_KEY": {
+      "description": "Flask secret key for session security. Use a long random string.",
+      "required": false,
+      "generator": "secret"
+    },
+    "LLM_MAX_TOKENS": {
+      "description": "Maximum tokens for LLM generation.",
+      "required": false,
+      "value": "1500"
+    },
+    "LLM_TEMPERATURE": {
+      "description": "LLM temperature for response creativity (0.0 - 1.0).",
+      "required": false,
+      "value": "0.7"
+    },
+    "OPENWEATHER_API_KEY": {
+      "description": "Optional OpenWeatherMap API key. If blank, wttr.in is used for free weather data.",
+      "required": false
+    },
+    "AMADEUS_API_KEY": {
+      "description": "Optional Amadeus Travel API key for live flight and hotel data.",
+      "required": false
+    },
+    "AMADEUS_API_SECRET": {
+      "description": "Optional Amadeus Travel API secret.",
+      "required": false
+    },
+    "AMADEUS_SANDBOX": {
+      "description": "Use Amadeus sandbox (test) environment. Set to False for production.",
+      "required": false,
+      "value": "True"
+    },
+    "OPENTRIPMAP_API_KEY": {
+      "description": "Optional OpenTripMap API key for live tourist attractions data.",
+      "required": false
+    }
+  },
+  "formation": {
+    "web": {
+      "quantity": 1,
+      "size": "basic"
+    }
+  },
+  "buildpacks": [
+    {
+      "url": "heroku/python"
+    }
+  ],
+  "stack": "heroku-22"
+}

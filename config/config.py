@@ -39,6 +39,12 @@ class Config:
     # OpenTripMap (attractions — free, 5000 calls/day)
     OPENTRIPMAP_API_KEY = os.getenv("OPENTRIPMAP_API_KEY", "")
 
+    # Langflow orchestration (optional — falls back to direct Granite when not set)
+    LANGFLOW_HOST    = os.getenv("LANGFLOW_HOST", "")            # e.g. http://127.0.0.1:7860
+    LANGFLOW_FLOW_ID = os.getenv("LANGFLOW_FLOW_ID", "")         # UUID from Langflow UI
+    LANGFLOW_API_KEY = os.getenv("LANGFLOW_API_KEY", "")         # only if Langflow auth enabled
+    LANGFLOW_TIMEOUT = int(os.getenv("LANGFLOW_TIMEOUT", "30"))  # HTTP timeout in seconds
+
     # External APIs
     OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY", "")   # optional — wttr.in used if blank
 

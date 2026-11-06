@@ -297,7 +297,7 @@ class TravelPlannerAgent:
 
     def __init__(self, granite_service, weather_service, currency_service,
                  amadeus_service=None, places_service=None, visa_service=None,
-                 destination_service=None):
+                 destination_service=None, langflow_service=None):
         self.granite     = granite_service
         self.weather     = weather_service
         self.currency    = currency_service
@@ -305,6 +305,7 @@ class TravelPlannerAgent:
         self.places      = places_service
         self.visa        = visa_service
         self.destination = destination_service
+        self.langflow    = langflow_service   # optional Langflow orchestration layer
         self._sessions: dict = {}   # in-memory session store
 
     # ------------------------------------------------------------------ #
@@ -878,7 +879,17 @@ class TravelPlannerAgent:
             history      = history_text or "No previous conversation.",
             user_message = message,
         )
-        response = self.granite.generate(prompt, max_tokens=800)
+        # ── Try Langflow first; fall back to direct Granite if unavailable ──
+        response = None
+        if self.langflow and self.langflow.available:
+            response = self.langflow.run_chat(message, session_id=session_id)
+            if response:
+                logger.info("Chat response served by Langflow.")
+            else:
+                logger.info("Langflow unavailable or returned no response — falling back to IBM Granite.")
+
+        if response is None:
+            response = self.granite.generate(prompt, max_tokens=800)
 
         # Persist turn to session
         session["history"].append({"user": message, "assistant": response,

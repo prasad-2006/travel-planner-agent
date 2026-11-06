@@ -17,6 +17,7 @@ from backend.services.amadeus_service import AmadeusService
 from backend.services.places_service import PlacesService
 from backend.services.visa_service import VisaService
 from backend.services.destination_service import DestinationService
+from backend.services.langflow_service import LangflowService
 
 
 logging.basicConfig(level=logging.INFO,
@@ -50,9 +51,17 @@ def create_app(env: str = None) -> Flask:
     places_svc = PlacesService(api_key=cfg.OPENTRIPMAP_API_KEY)
     visa_svc        = VisaService()          # curated facts — no key needed
     destination_svc = DestinationService()   # Wikipedia + Nominatim + REST Countries
+    langflow_svc    = LangflowService(
+        host    = cfg.LANGFLOW_HOST,
+        flow_id = cfg.LANGFLOW_FLOW_ID,
+        api_key = cfg.LANGFLOW_API_KEY,
+        timeout = cfg.LANGFLOW_TIMEOUT,
+    )
 
     status_parts = ["IBM Granite ✓", "Weather/wttr.in ✓", "Currency/ECB ✓",
                     "Visa/Country ✓", "Wikipedia/OSM ✓"]
+    if langflow_svc.available:  status_parts.append("Langflow ✓")
+    else:                       status_parts.append("Langflow ✗ (optional — set LANGFLOW_HOST + LANGFLOW_FLOW_ID)")
     if amadeus_svc.available:  status_parts.append("Amadeus ✓")
     else:                       status_parts.append("Amadeus ✗ (optional)")
     if places_svc.available:   status_parts.append("OpenTripMap ✓")
@@ -66,6 +75,7 @@ def create_app(env: str = None) -> Flask:
         places_service=places_svc,
         visa_service=visa_svc,
         destination_service=destination_svc,
+        langflow_service=langflow_svc,
     )
     app.config["TRAVEL_AGENT"] = agent
 

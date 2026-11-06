@@ -191,5 +191,14 @@ def optimize_schedule():
 
 @api_bp.route("/health", methods=["GET"])
 def health():
-    return jsonify({"status": "ok", "service": "Travel Planner Agent",
-                    "model": "IBM Granite (watsonx.ai)"})
+    agent = get_agent()
+    langflow_enabled = (
+        agent.langflow is not None and agent.langflow.available
+    )
+    return jsonify({
+        "status":           "ok",
+        "service":          "Travel Planner Agent",
+        "model":            "IBM Granite (watsonx.ai)",
+        "langflow_enabled": langflow_enabled,
+        "chat_engine":      "Langflow → IBM Granite (fallback)" if langflow_enabled else "IBM Granite",
+    })

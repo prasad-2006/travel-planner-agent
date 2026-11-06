@@ -272,9 +272,10 @@
   <!-- Loading -->
   <div class="loading-card" id="loading-card">
     <div class="big-spinner"></div>
-    <h3 style="font-size:1.05rem;font-weight:700;margin-bottom:.4rem;">IBM Granite is crafting your trip…</h3>
+    <h3 style="font-size:1.05rem;font-weight:700;margin-bottom:.4rem;" id="loading-title">IBM Granite is crafting your trip…</h3>
     <p style="font-size:.88rem;color:var(--muted);">Generating flights, hotels, itinerary &amp; budget visualisations</p>
     <div class="loading-steps">
+      <div class="loading-step" id="loading-step-lf" style="display:none;"><div class="step-dot active"></div>🔀 Langflow</div>
       <div class="loading-step"><div class="step-dot active"></div>✈️ Flights</div>
       <div class="loading-step"><div class="step-dot active"></div>🏨 Hotels</div>
       <div class="loading-step"><div class="step-dot active"></div>📅 Itinerary</div>
@@ -484,6 +485,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   const today = new Date().toISOString().split('T')[0];
   document.querySelector('[name=start_date]').value = today;
   await initSession();
+  await initEngineStatus();
+
+  // Show/hide Langflow step in loading card based on engine status
+  if (window.chatEngine && window.chatEngine.langflow) {
+    const lfStep = document.getElementById('loading-step-lf');
+    if (lfStep) lfStep.style.display = 'flex';
+    const title = document.getElementById('loading-title');
+    if (title) title.textContent = 'Langflow + IBM Granite is crafting your trip…';
+  }
 
   document.getElementById('trip-form').addEventListener('submit', async (e) => {
     e.preventDefault();
